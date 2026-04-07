@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pokémon Multiplayer — Pueblo Lavanda</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0015;
+      font-family: 'Press Start 2P', monospace;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Fondo animado */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, #1a0030 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 50%, #000d2e 0%, transparent 60%);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 700px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: clamp(14px, 3vw, 22px);
+      color: #cc88ff;
+      text-shadow: 0 0 20px #cc88ff88;
+      margin-bottom: 6px;
+      line-height: 1.6;
+    }
+    h2 {
+      font-size: clamp(8px, 2vw, 11px);
+      color: #7755aa;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+    }
+
+    /* Card contenedor */
+    .card {
+      background: rgba(20, 5, 40, 0.85);
+      border: 2px solid #3a1a6a;
+      border-radius: 8px;
+      padding: 28px 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 9px;
+      color: #9966cc;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #0d0020;
+      border: 2px solid #3a1a6a;
+      border-radius: 4px;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      padding: 10px 12px;
+      margin-bottom: 22px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #cc88ff; }
+
+    /* Selector de personaje */
+    .char-label {
+      font-size: 9px;
+      color: #9966cc;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    .characters {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 22px;
+    }
+
+    .char-card {
+      flex: 1;
+      background: #0d0020;
+      border: 2px solid #3a1a6a;
+      border-radius: 6px;
+      padding: 14px 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .char-card:hover { border-color: #cc88ff; background: #1a0035; }
+    .char-card.selected {
+      border-color: #ffe040;
+      background: #1a0d00;
+      box-shadow: 0 0 16px #ffe04044;
+    }
+    .char-card.selected::after {
+      content: '✓';
+      position: absolute;
+      top: 6px; right: 8px;
+      color: #ffe040;
+      font-size: 10px;
+    }
+
+    .char-sprite {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      display: block;
+      margin: 0 auto 8px;
+      /* fallback color si no hay sprite */
+      background: #1a0030;
+      border-radius: 4px;
+    }
+
+    .char-name {
+      font-size: 8px;
+      color: #ddbdff;
+      text-align: center;
+    }
+    .char-card.selected .char-name { color: #ffe040; }
+
+    /* Modo espectador */
+    .spectator-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      cursor: pointer;
+      padding: 8px 10px;
+      border: 1px solid #2a1050;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .spectator-row:hover { background: #0d0020; }
+    .spectator-row input { width: 16px; height: 16px; accent-color: #cc88ff; cursor: pointer; }
+    .spectator-row span { font-size: 8px; color: #9966cc; }
+
+    /* Botón jugar */
+    .btn-play {
+      width: 100%;
+      background: #5c1aaa;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 13px;
+      padding: 14px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 1px;
+    }
+    .btn-play:hover { background: #8833ee; }
+    .btn-play:active { transform: scale(0.98); }
+    .btn-play:disabled { background: #2a1050; color: #666; cursor: not-allowed; }
+
+    /* Leaderboard previo */
+    .leaderboard {
+      margin-top: 20px;
+      background: rgba(10, 0, 25, 0.8);
+      border: 1px solid #2a1050;
+      border-radius: 6px;
+      padding: 14px;
+    }
+    .leaderboard h3 {
+      font-size: 9px;
+      color: #ffe040;
+      margin-bottom: 10px;
+    }
+    .lb-entry {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8px;
+      color: #ccc;
+      padding: 4px 0;
+      border-bottom: 1px solid #1a0a30;
+    }
+    .lb-entry:last-child { border-bottom: none; }
+    .lb-entry .rank { color: #cc88ff; width: 20px; }
+    .lb-entry .name { flex: 1; text-align: left; padding: 0 8px; }
+    .lb-entry .pts  { color: #ffe040; }
+    #lb-empty { font-size: 8px; color: #5a4070; text-align: center; padding: 8px 0; }
+
+    /* Jugadores conectados */
+    .online {
+      margin-top: 12px;
+      font-size: 8px;
+      color: #6644aa;
+      text-align: center;
+    }
+    .online span { color: #44ff88; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>PUEBLO LAVANDA</h1>
+  <h2>NIEBLA — MULTIPLAYER</h2>
+
+  <div class="card">
+    <label>NOMBRE DE ENTRENADOR</label>
+    <input type="text" id="inp-name" placeholder="Tu nombre..." maxlength="16" autocomplete="off">
+
+    <div class="char-label">ELIGE TU PERSONAJE</div>
+    <div class="characters">
+      <div class="char-card selected" data-char="ash">
+        <img class="char-sprite" src="sprites/ash_preview.png"
+             onerror="this.style.display='none'" alt="Ash">
+        <div class="char-name">ASH</div>
+      </div>
+      <div class="char-card" data-char="misty">
+        <img class="char-sprite" src="sprites/misty_preview.png"
+             onerror="this.style.display='none'" alt="Misty">
+        <div class="char-name">MISTY</div>
+      </div>
+      <div class="char-card" data-char="brock">
+        <img class="char-sprite" src="sprites/brock_preview.png"
+             onerror="this.style.display='none'" alt="Brock">
+        <div class="char-name">BROCK</div>
+      </div>
+    </div>
+
+    <label class="spectator-row" for="chk-spectator">
+      <input type="checkbox" id="chk-spectator">
+      <span>ENTRAR COMO ESPECTADOR (solo observar)</span>
+    </label>
+
+    <button class="btn-play" id="btn-play">▶ COMENZAR</button>
+  </div>
+
+  <div class="leaderboard">
+    <h3>🏆 TOP ENTRENADORES</h3>
+    <div id="lb-list"><div id="lb-empty">Cargando...</div></div>
+  </div>
+
+  <div class="online">CONECTADOS: <span id="online-count">0</span></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io()
+  let selectedChar = 'ash'
+
+  // Selección de personaje
+  document.querySelectorAll('.char-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'))
+      card.classList.add('selected')
+      selectedChar = card.dataset.char
+    })
+  })
+
+  // Espectador desactiva selección de personaje
+  document.getElementById('chk-spectator').addEventListener('change', (e) => {
+    document.querySelectorAll('.char-card').forEach(c => {
+      c.style.opacity = e.target.checked ? '0.4' : '1'
+      c.style.pointerEvents = e.target.checked ? 'none' : 'auto'
+    })
+  })
+
+  // Botón jugar
+  document.getElementById('btn-play').addEventListener('click', () => {
+    const name = document.getElementById('inp-name').value.trim()
+    if (!name) {
+      document.getElementById('inp-name').focus()
+      document.getElementById('inp-name').style.borderColor = '#ff4444'
+      return
+    }
+    const isSpectator = document.getElementById('chk-spectator').checked
+    // Guardar en sessionStorage y redirigir
+    sessionStorage.setItem('player', JSON.stringify({ name, character: selectedChar, isSpectator }))
+    window.location.href = 'game.html'
+  })
+
+  // Leaderboard
+  socket.emit('request-leaderboard')
+  socket.on('leaderboard', (scores) => {
+    const list = document.getElementById('lb-list')
+    if (!scores || scores.length === 0) {
+      list.innerHTML = '<div id="lb-empty">Sé el primero en jugar!</div>'
+      return
+    }
+    const medals = ['🥇','🥈','🥉']
+    list.innerHTML = scores.slice(0, 5).map((s, i) => `
+      <div class="lb-entry">
+        <span class="rank">${medals[i] || (i+1)+'.'}</span>
+        <span class="name">${s.playerName} <span style="color:#7755aa;font-size:7px">[${s.character}]</span></span>
+        <span class="pts">${s.pts} pts</span>
+      </div>
+    `).join('')
+  })
+
+  // Jugadores online
+  socket.on('game-state', (state) => {
+    document.getElementById('online-count').textContent = state.players.length
+  })
+</script>
+</body>
+</html>

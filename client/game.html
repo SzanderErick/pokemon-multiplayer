@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pokemon Multiplayer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Press Start 2P', monospace; }
+    canvas { display: block; }
+    #fogCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+    #hud { position: fixed; top: 14px; left: 14px; z-index: 30; pointer-events: none; }
+    #hud div { margin-bottom: 7px; font-size: 11px; text-shadow: 2px 2px 0 #000; }
+    #hudBalls  { color: #ffe040; }
+    #hudRank   { color: #cc88ff; }
+    #hudCaught { color: #44ff88; }
+    #miedoLabel { font-size: 9px !important; color: #ff6688 !important; margin-bottom: 3px !important; }
+    #miedoTrack { width: 140px; height: 8px; background: #1a0a1a; border: 1px solid #440022; border-radius: 2px; overflow: hidden; }
+    #miedoFill  { height: 100%; width: 20%; background: #44ff88; transition: width 0.3s, background 0.3s; }
+    #myTag { position: fixed; top: 14px; right: 160px; z-index: 30; font-size: 9px; color: #ffe040; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+    #specBanner { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); border: 2px solid #cc88ff; color: #cc88ff; font-size: 11px; padding: 10px 20px; z-index: 40; pointer-events: none; display: none; }
+    #leaderboard { position: fixed; top: 14px; right: 14px; background: #0a0015; border: 2px solid #5533aa; color: #fff; padding: 10px 14px; border-radius: 4px; font-size: 9px; line-height: 1.8; z-index: 30; min-width: 180px; }
+    #leaderboard b { color: #ffe040; font-size: 10px; }
+    #floatContainer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 20; }
+    .floatlabel { position: absolute; font-family: 'Press Start 2P', monospace; font-size: 13px; text-shadow: 2px 2px 0 #000; white-space: nowrap; pointer-events: none; animation: floatup 1.2s ease-out forwards; }
+    @keyframes floatup { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-55px)} }
+    #shinybanner { position: fixed; top: 38%; left: 50%; transform: translate(-50%,-50%); background: #000; border: 3px solid #ffe040; color: #ffe040; font-size: 14px; padding: 20px 32px; border-radius: 4px; z-index: 50; display: none; text-align: center; box-shadow: 0 0 30px #ffe04088; line-height: 2; white-space: pre-line; }
+    #shinytimer { position: fixed; top: 130px; left: 14px; z-index: 30; font-size: 10px; color: #ffe040; display: none; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50%{opacity:0.4} }
+    #levelBanner { position: fixed; top: 42%; left: 50%; transform: translate(-50%,-50%); font-family: 'Press Start 2P', monospace; font-size: 18px; z-index: 40; pointer-events: none; text-align: center; display: none; text-shadow: 3px 3px 0 #000; white-space: pre-line; line-height: 2; }
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px; }
+    #overlay h1 { font-size: clamp(28px,6vw,52px); }
+    #overlay p  { font-size: 11px; color: #bbb; max-width: 400px; line-height: 2; }
+    #overlay .fact-box { background: #0d0020; border: 1px solid #3a1a6a; border-radius: 6px; padding: 16px 20px; max-width: 480px; font-size: 9px; color: #cc88ff; line-height: 2; }
+    #overlay .fact-title { color: #ffe040; display: block; margin-bottom: 8px; font-size: 8px; }
+    #overlay .btn-back { background: #5c1aaa; border: none; border-radius: 4px; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 12px; padding: 14px 28px; cursor: pointer; transition: background 0.2s; }
+    #overlay .btn-back:hover { background: #8833ee; }
+    .player-label { position: absolute; font-family: 'Press Start 2P', monospace; font-size: 8px; text-shadow: 1px 1px 0 #000; white-space: nowrap; pointer-events: none; z-index: 25; transform: translate(-50%,-100%); }
+    #otherPlayers { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 25; }
+    #visionHint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 8px; color: #44ff8888; z-index: 30; pointer-events: none; }
+  </style>
+</head>
+<body>
+<canvas id="fogCanvas"></canvas>
+<div id="hud">
+  <div id="hudBalls">BALLS: 5</div>
+  <div id="hudRank">POKEBALL 0 PTS</div>
+  <div id="hudCaught">ATRAP: 0</div>
+  <div id="miedoLabel">MIEDO: 20%</div>
+  <div id="miedoTrack"><div id="miedoFill"></div></div>
+</div>
+<div id="myTag"></div>
+<div id="shinytimer"></div>
+<div id="shinybanner"></div>
+<div id="levelBanner"></div>
+<div id="floatContainer"></div>
+<div id="otherPlayers"></div>
+<div id="specBanner">MODO ESPECTADOR</div>
+<div id="visionHint">Atrapa en tu rango de vision: +3 PTS +1 BALL</div>
+<div id="leaderboard">
+  <b>🏆 TOP ENTRENADORES</b>
+  <div id="lbList" style="margin-top:8px;color:#ccc">-</div>
+</div>
+<div id="overlay">
+  <h1 id="ov-title"></h1>
+  <p  id="ov-sub"></p>
+  <div class="fact-box" id="ov-fact" style="display:none">
+    <span class="fact-title">DATO CURIOSO</span>
+    <span id="ov-fact-text"></span>
+  </div>
+  <button class="btn-back" onclick="window.location.href='index.html'">VOLVER AL MENU</button>
+</div>
+<script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const playerData = JSON.parse(sessionStorage.getItem('player') || '{"name":"Ash","character":"ash","isSpectator":false}')
+const ME = { name: playerData.name, character: playerData.character, isSpectator: playerData.isSpectator }
+const W = window.innerWidth, H = window.innerHeight
+kaboom({ background:[18,12,30], width:W, height:H, scale:1, stretch:true, letterbox:false, debug:false })
+const fogCanvas = document.getElementById('fogCanvas')
+fogCanvas.width = W; fogCanvas.height = H
+const fogCtx = fogCanvas.getContext('2d')
+const FOGRADIUS = ME.isSpectator ? 9999 : 250
+let fogCleared = ME.isSpectator
+const bgMusic = new Audio('sound/lavender.mp3')
+bgMusic.loop = true; bgMusic.volume = 0.45
+const socket = io()
+let mySocketId = null, currentGhostData = null, shinyActivo = false
+const CHAR_ANIMS = {
+  sliceX:3, sliceY:4,
+  anims:{
+    'walk-down': {from:0,to:2,speed:8,loop:true},
+    'walk-left': {from:3,to:5,speed:8,loop:true},
+    'walk-up':   {from:6,to:8,speed:8,loop:true},
+    'walk-right':{from:9,to:11,speed:8,loop:true},
+    'idle-down': {from:1,to:1},
+    'idle-left': {from:4,to:4},
+    'idle-up':   {from:7,to:7},
+    'idle-right':{from:10,to:10}
+  }
+}
+loadSprite('ash',   'sprites/ash.png',   CHAR_ANIMS)
+loadSprite('misty', 'sprites/misty.png', CHAR_ANIMS)
+loadSprite('brock', 'sprites/brock.png', CHAR_ANIMS)
+loadSprite('gastly',        'sprites/gastly.png')
+loadSprite('haunter',       'sprites/haunter.png')
+loadSprite('gengar',        'sprites/gengar.png')
+loadSprite('gastly-shiny',  'sprites/gastly-shiny.png')
+loadSprite('haunter-shiny', 'sprites/haunter-shiny.png')
+loadSprite('gengar-shiny',  'sprites/gengar-shiny.png')
+loadSprite('bg1','backgrounds/escenario1.png')
+loadSprite('bg2','backgrounds/escenario2.png')
+loadSprite('bg3','backgrounds/escenario3.png')
+loadSprite('bg4','backgrounds/escenario4.png')
+loadSprite('bg5','backgrounds/escenario5.png')
+const RANK_TO_BG    = {pokeball:'bg1',superball:'bg2',ultraball:'bg3',masterball:'bg4',maestro:'bg5'}
+const RANK_TO_LABEL = {pokeball:'Pueblo Lavanda',superball:'Bosque Safari',ultraball:'Cementerio Oscuro',masterball:'Cueva Fantasma',maestro:'Arena Final'}
+const GHOST_SPEEDS  = {'gastly':110,'gastly-shiny':110,'haunter':140,'haunter-shiny':140,'gengar':175,'gengar-shiny':175}
+const GHOST_SCALES  = {'gastly':1.5,'gastly-shiny':1.5,'haunter':1.8,'haunter-shiny':1.8,'gengar':2.2,'gengar-shiny':2.2}
+const GHOST_OPS     = {'gastly':1.0,'gastly-shiny':1.0,'haunter':0.65,'haunter-shiny':0.65,'gengar':0.45,'gengar-shiny':0.45}
+const CHAR_COLORS   = {ash:'#ffe040',misty:'#44aaff',brock:'#ff8844'}
+const Miedo = {
+  valor:20,
+  set(v){this.valor=Math.min(100,Math.max(0,v));this.render()},
+  cambiar(d){this.set(this.valor+d)},
+  reset(){this.set(20)},
+  render(){
+    const pct=Math.round(this.valor)
+    const fill=document.getElementById('miedoFill')
+    const lbl=document.getElementById('miedoLabel')
+    if(!fill||!lbl)return
+    fill.style.width=pct+'%'
+    fill.style.background=pct<30?'#44ff88':pct<65?'#ffaa22':'#ff2244'
+    lbl.textContent='MIEDO: '+pct+'%'
+  }
+}
+const RANKINFO={
+  pokeball:  {label:'POKEBALL',  css:'#ff4444'},
+  superball: {label:'SUPERBALL', css:'#4488ff'},
+  ultraball: {label:'ULTRABALL', css:'#ffd21e'},
+  masterball:{label:'MASTERBALL',css:'#ddbbff'},
+  maestro:   {label:'MAESTRO',   css:'#ffe040'}
+}
+function getRank(pts){
+  if(pts>=100)return 'maestro'
+  if(pts>=50) return 'masterball'
+  if(pts>=20) return 'ultraball'
+  if(pts>=10) return 'superball'
+  return 'pokeball'
+}
+let gs={pokeballs:5,pts:0,caught:0}
+function updateHUD(){
+  const r=getRank(gs.pts),ri=RANKINFO[r]
+  document.getElementById('hudBalls').textContent ='BALLS: '+gs.pokeballs
+  document.getElementById('hudRank').textContent  =ri.label+' '+gs.pts+' PTS'
+  document.getElementById('hudRank').style.color  =ri.css
+  document.getElementById('hudCaught').textContent='ATRAP: '+gs.caught
+  document.getElementById('myTag').textContent    =ME.name+' ['+ME.character.toUpperCase()+']'
+  document.getElementById('myTag').style.color    =CHAR_COLORS[ME.character]||'#fff'
+}
+function floatLabel(txt,px,py,col){
+  const el=document.createElement('div')
+  el.className='floatlabel'
+  el.style.left=px+'px';el.style.top=(py-10)+'px';el.style.color=col
+  el.textContent=txt
+  document.getElementById('floatContainer').appendChild(el)
+  setTimeout(()=>el.remove(),1300)
+}
+const otherSprites={}
+function updateOtherPlayers(players){
+  const container=document.getElementById('otherPlayers')
+  players.forEach(p=>{
+    if(p.socketId===mySocketId)return
+    if(!otherSprites[p.socketId]){
+      const lbl=document.createElement('div')
+      lbl.className='player-label';lbl.id='lbl-'+p.socketId
+      lbl.style.color=CHAR_COLORS[p.character]||'#fff'
+      lbl.textContent=p.name+(p.isSpectator?' [ESP]':'')
+      container.appendChild(lbl)
+      otherSprites[p.socketId]=lbl
+    }
+    const lbl=otherSprites[p.socketId]
+    lbl.style.left=p.x+'px';lbl.style.top=p.y+'px'
+  })
+  Object.keys(otherSprites).forEach(id=>{
+    if(!players.find(p=>p.socketId===id)){
+      const el=document.getElementById('lbl-'+id)
+      if(el)el.remove()
+      delete otherSprites[id]
+    }
+  })
+}
+function showOverlay(title,titleColor,sub,fact){
+  bgMusic.pause()
+  document.getElementById('ov-title').textContent=title
+  document.getElementById('ov-title').style.color=titleColor
+  document.getElementById('ov-sub').textContent=sub
+  if(fact){document.getElementById('ov-fact').style.display='block';document.getElementById('ov-fact-text').textContent=fact}
+  document.getElementById('overlay').style.display='flex'
+}
+let playerRef=null
+function drawFog(){
+  fogCtx.clearRect(0,0,W,H)
+  if(fogCleared){requestAnimationFrame(drawFog);return}
+  if(playerRef&&playerRef.exists()){
+    fogCtx.fillStyle='rgba(5,0,15,0.82)';fogCtx.fillRect(0,0,W,H)
+    fogCtx.globalCompositeOperation='destination-out'
+    const grd=fogCtx.createRadialGradient(playerRef.pos.x,playerRef.pos.y,10,playerRef.pos.x,playerRef.pos.y,FOGRADIUS)
+    grd.addColorStop(0,'rgba(0,0,0,1)');grd.addColorStop(0.7,'rgba(0,0,0,0.8)');grd.addColorStop(1,'rgba(0,0,0,0)')
+    fogCtx.fillStyle=grd;fogCtx.fillRect(0,0,W,H)
+    fogCtx.globalCompositeOperation='source-over'
+  }
+  requestAnimationFrame(drawFog)
+}
+drawFog()
+socket.on('leaderboard',(scores)=>{
+  const list=document.getElementById('lbList')
+  if(!scores||scores.length===0){list.innerHTML='-';return}
+  const medals=['🥇','🥈','🥉']
+  list.innerHTML=scores.slice(0,5).map((s,i)=>
+    `${medals[i]||(i+1)+'.'} ${s.playerName}<br><span style="color:#ffe040">${s.pts}pts</span> [${s.character}]`
+  ).join('<br>')
+})
+scene('game',()=>{
+  bgMusic.play().catch(()=>{})
+  if(ME.isSpectator){
+    document.getElementById('hud').style.display='none'
+    document.getElementById('specBanner').style.display='block'
+    document.getElementById('visionHint').style.display='none'
+  }
+  let bgObj=add([sprite('bg1'),pos(0,0),scale(W/512,H/512),z(-10)])
+  function setScenario(rank){
+    const bgKey=RANK_TO_BG[rank]||'bg1'
+    if(bgObj&&bgObj.exists())destroy(bgObj)
+    bgObj=add([sprite(bgKey),pos(0,0),scale(W/512,H/512),z(-10)])
+  }
+  ;[[80,80],[W-120,100],[150,H-150],[W-200,H-200],[W/2,80],[W-80,H/2],[50,H/2],[W/2,H-90]].forEach(c=>{
+    add([rect(26,34),pos(c[0],c[1]),color(55,50,75),opacity(0.5)])
+  })
+  const SPEED=ME.isSpectator?300:240
+  const player=add([sprite(ME.character),pos(W/2,H/2),anchor('center'),scale(0.5),area()])
+  player.play('idle-down')
+  playerRef=player
+  let lastDir='down',moving=false,alive=true,ghostObj=null,ghostAngle=0,ghostPulseLoop=null
+  player.onUpdate(()=>{
+    if(!alive&&!ME.isSpectator)return
+    player.pos.x=Math.max(15,Math.min(W-15,player.pos.x))
+    player.pos.y=Math.max(15,Math.min(H-15,player.pos.y))
+    const wasMoving=moving;moving=false
+    if(isKeyDown('left')||isKeyDown('a')){player.move(-SPEED,0);moving=true;if(lastDir!=='left'){lastDir='left';player.play('walk-left')}}
+    else if(isKeyDown('right')||isKeyDown('d')){player.move(SPEED,0);moving=true;if(lastDir!=='right'){lastDir='right';player.play('walk-right')}}
+    else if(isKeyDown('up')||isKeyDown('w')){player.move(0,-SPEED);moving=true;if(lastDir!=='up'){lastDir='up';player.play('walk-up')}}
+    else if(isKeyDown('down')||isKeyDown('s')){player.move(0,SPEED);moving=true;if(lastDir!=='down'){lastDir='down';player.play('walk-down')}}
+    if(!moving&&wasMoving)player.play('idle-'+lastDir)
+    if(moving)socket.emit('player-move',{x:player.pos.x,y:player.pos.y,dir:lastDir,moving})
+  })
+  function startGhostMovement(ghost,type){
+    ghostAngle=Math.random()*360
+    const speed=(GHOST_SPEEDS[type]||110)*(1+Miedo.valor/100*0.5)
+    ghost.onUpdate(()=>{
+      if(!ghost.exists())return
+      const rad=ghostAngle*Math.PI/180
+      ghost.move(Math.cos(rad)*speed,Math.sin(rad)*speed)
+      if(Math.random()<0.03)ghostAngle=Math.random()*360
+      if(ghost.pos.x<20||ghost.pos.x>W-20)ghostAngle=180-ghostAngle
+      if(ghost.pos.y<20||ghost.pos.y>H-20)ghostAngle=-ghostAngle
+    })
+  }
+  function startGhostPulse(ghost,type,timeLimit){
+    const baseOp=GHOST_OPS[type]||1.0
+    wait(timeLimit*0.60/1000,()=>{
+      if(!ghost||!ghost.exists())return
+      let tog=true
+      ghostPulseLoop=loop(0.12,()=>{
+        if(!ghost||!ghost.exists())return
+        ghost.opacity=tog?baseOp*0.2:baseOp
+        tog=!tog
+      })
+    })
+  }
+  onMousePress(()=>{
+    if(!alive||ME.isSpectator)return
+    if(!currentGhostData||!ghostObj||!ghostObj.exists()){socket.emit('miss-ghost');return}
+    const d=mousePos().dist(ghostObj.pos)
+    if(d<70){
+      const inVision=fogCleared||ghostObj.pos.dist(player.pos)<=FOGRADIUS
+      socket.emit('catch-ghost',{ghostId:currentGhostData.id,inVision})
+    }else{socket.emit('miss-ghost')}
+  })
+  socket.on('joined',(data)=>{mySocketId=data.socketId})
+  socket.on('game-state',(state)=>{
+    updateOtherPlayers(state.players)
+    const me=state.players.find(p=>p.socketId===mySocketId)
+    if(me){gs.pokeballs=me.pokeballs;gs.pts=me.pts;gs.caught=me.caught;updateHUD()}
+    socket.emit('request-leaderboard')
+  })
+  socket.on('ghost-spawned',(data)=>{
+    currentGhostData=data
+    if(ghostObj&&ghostObj.exists())destroy(ghostObj)
+    if(ghostPulseLoop){ghostPulseLoop.cancel();ghostPulseLoop=null}
+    ghostObj=add([sprite(data.type),pos(data.x,data.y),anchor('center'),scale(GHOST_SCALES[data.type]||1.5),opacity(GHOST_OPS[data.type]||1.0),area()])
+    if(data.type.includes('shiny'))ghostObj.color=rgb(255,220,80)
+    startGhostMovement(ghostObj,data.type)
+    if(data.cfg&&data.cfg.timeLimit)startGhostPulse(ghostObj,data.type,data.cfg.timeLimit)
+  })
+  socket.on('ghost-caught',(data)=>{
+    if(ghostObj&&ghostObj.exists())destroy(ghostObj)
+    if(ghostPulseLoop){ghostPulseLoop.cancel();ghostPulseLoop=null}
+    currentGhostData=null;ghostObj=null
+    if(data.caughtBy.socketId===mySocketId){
+      Miedo.cambiar(-10)
+      floatLabel('+'+data.pts+' PTS'+(data.visionBonus?' +VIS+3':''),W/2-60,H/2,'#44ff88')
+    }else{
+      floatLabel(data.caughtBy.name+' atrapo!',W/2-70,H/2,'#cc88ff')
+    }
+  })
+  socket.on('ghost-escaped',(data)=>{
+    if(ghostObj&&ghostObj.exists())destroy(ghostObj)
+    if(ghostPulseLoop){ghostPulseLoop.cancel();ghostPulseLoop=null}
+    currentGhostData=null;ghostObj=null
+    Miedo.cambiar(20)
+    floatLabel('-'+data.ptLoss+' PTS escapo!',W/2-40,H/2,'#ff4444')
+  })
+  socket.on('ghost-evolving',(data)=>{
+    floatLabel(data.evolveTo.toUpperCase()+' APARECE!',W/2-80,H/2-60,'#cc88ff')
+  })
+  socket.on('miss-result',(data)=>{
+    gs.pokeballs=data.pokeballs;updateHUD()
+    floatLabel('-2 BALLS',mousePos().x,mousePos().y,'#ff9922')
+    Miedo.cambiar(15)
+  })
+  socket.on('shiny-bonus',()=>{
+    shinyActivo=true;fogCleared=true
+    document.getElementById('shinybanner').style.display='block'
+    document.getElementById('shinybanner').textContent='SHINY!\n+5 BALLS  NIEBLA OFF  12s  +3 PTS'
+    document.getElementById('shinytimer').style.display='block'
+    let countdown=12
+    const t=setInterval(()=>{
+      countdown--
+      document.getElementById('shinytimer').textContent='SHINY BONUS '+countdown+'s'
+      if(countdown<=0){
+        clearInterval(t);shinyActivo=false;fogCleared=false
+        document.getElementById('shinybanner').style.display='none'
+        document.getElementById('shinytimer').style.display='none'
+      }
+    },1000)
+  })
+  socket.on('level-up',(level)=>{
+    setScenario(level.rank)
+    const ri=RANKINFO[level.rank]||RANKINFO['pokeball']
+    const banner=document.getElementById('levelBanner')
+    banner.style.color=ri.css
+    banner.textContent=ri.label+'\n'+(RANK_TO_LABEL[level.rank]||'')
+    banner.style.display='block'
+    setTimeout(()=>banner.style.display='none',2500)
+  })
+  socket.on('game-over',(data)=>{
+    alive=false
+    showOverlay('GAME OVER','#ff2244','POKEBALLS AGOTADAS  '+data.pts+' PTS  ATRAPASTE '+data.caught,data.fact)
+  })
+  socket.on('victory',(data)=>{
+    alive=false
+    showOverlay('MAESTRO POKEMON','#ffe040','100 PTS! ATRAPASTE '+data.caught+' POKEMON',null)
+  })
+  socket.on('player-moved',(data)=>{
+    const lbl=document.getElementById('lbl-'+data.socketId)
+    if(lbl){lbl.style.left=data.x+'px';lbl.style.top=data.y+'px'}
+  })
+  updateHUD()
+  socket.emit('join-game',{name:ME.name,character:ME.character,isSpectator:ME.isSpectator})
+})
+go('game')
+</script>
+</body>
+</html>

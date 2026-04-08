@@ -19,7 +19,6 @@
       overflow: hidden;
     }
 
-    /* Fondo animado */
     body::before {
       content: '';
       position: fixed;
@@ -52,7 +51,6 @@
       letter-spacing: 2px;
     }
 
-    /* Card contenedor */
     .card {
       background: rgba(20, 5, 40, 0.85);
       border: 2px solid #3a1a6a;
@@ -83,7 +81,6 @@
     }
     input[type="text"]:focus { border-color: #cc88ff; }
 
-    /* Selector de personaje */
     .char-label {
       font-size: 9px;
       color: #9966cc;
@@ -128,7 +125,6 @@
       image-rendering: pixelated;
       display: block;
       margin: 0 auto 8px;
-      /* fallback color si no hay sprite */
       background: #1a0030;
       border-radius: 4px;
     }
@@ -140,7 +136,6 @@
     }
     .char-card.selected .char-name { color: #ffe040; }
 
-    /* Modo espectador */
     .spectator-row {
       display: flex;
       align-items: center;
@@ -156,7 +151,6 @@
     .spectator-row input { width: 16px; height: 16px; accent-color: #cc88ff; cursor: pointer; }
     .spectator-row span { font-size: 8px; color: #9966cc; }
 
-    /* Botón jugar */
     .btn-play {
       width: 100%;
       background: #5c1aaa;
@@ -174,7 +168,6 @@
     .btn-play:active { transform: scale(0.98); }
     .btn-play:disabled { background: #2a1050; color: #666; cursor: not-allowed; }
 
-    /* Leaderboard previo */
     .leaderboard {
       margin-top: 20px;
       background: rgba(10, 0, 25, 0.8);
@@ -201,7 +194,6 @@
     .lb-entry .pts  { color: #ffe040; }
     #lb-empty { font-size: 8px; color: #5a4070; text-align: center; padding: 8px 0; }
 
-    /* Jugadores conectados */
     .online {
       margin-top: 12px;
       font-size: 8px;
@@ -260,7 +252,6 @@
   const socket = io()
   let selectedChar = 'ash'
 
-  // Selección de personaje
   document.querySelectorAll('.char-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'))
@@ -269,7 +260,6 @@
     })
   })
 
-  // Espectador desactiva selección de personaje
   document.getElementById('chk-spectator').addEventListener('change', (e) => {
     document.querySelectorAll('.char-card').forEach(c => {
       c.style.opacity = e.target.checked ? '0.4' : '1'
@@ -277,7 +267,6 @@
     })
   })
 
-  // Botón jugar
   document.getElementById('btn-play').addEventListener('click', () => {
     const name = document.getElementById('inp-name').value.trim()
     if (!name) {
@@ -286,12 +275,11 @@
       return
     }
     const isSpectator = document.getElementById('chk-spectator').checked
-    // Guardar en sessionStorage y redirigir
+
     sessionStorage.setItem('player', JSON.stringify({ name, character: selectedChar, isSpectator }))
     window.location.href = 'game.html'
   })
 
-  // Leaderboard
   socket.emit('request-leaderboard')
   socket.on('leaderboard', (scores) => {
     const list = document.getElementById('lb-list')
@@ -309,7 +297,6 @@
     `).join('')
   })
 
-  // Jugadores online
   socket.on('game-state', (state) => {
     document.getElementById('online-count').textContent = state.players.length
   })
